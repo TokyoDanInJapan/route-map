@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    // The package itself is browser-only. The tests are not: they read their
+    // fixtures off disk, so they need Node's own types, and TypeScript 7 stops
+    // guessing that from what happens to be installed.
+    "types": ["node"]
+  },
+  "include": ["src", "tests"]
+}
