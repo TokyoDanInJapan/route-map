@@ -1,0 +1,30 @@
+---
+/**
+ * The elevation profile that a <RouteMap> pairs with.
+ *
+ * The SVG comes from `gpx-mapgen`, and is inlined rather than referenced with
+ * an <img> so its grid, axis and legend colours can pick up a class-based dark
+ * mode. An externally referenced SVG only ever sees prefers-color-scheme.
+ *
+ * Import it with Vite's `?raw` suffix, so what arrives is the source text
+ * rather than an asset URL:
+ *
+ *   import ElevationSvg from '~/assets/rides/my-ride/elevation.svg?raw';
+ *   <ElevationChart svg={ElevationSvg} trackId="my-ride" />
+ *
+ * Passing a `trackId` that matches a <RouteMap trackId="…"> on the same page
+ * pairs the two: hovering either one marks the same spot on both. The map owns
+ * that interaction and injects its cursor into this SVG - all this does is make
+ * itself findable and give the cursor somewhere to sit.
+ */
+interface Props {
+  svg: string;
+  /** Ties this chart to a <RouteMap trackId="…"> so hovering syncs both. */
+  trackId?: string;
+  class?: string;
+}
+
+const { svg, trackId, class: className } = Astro.props;
+---
+
+<div class:list={['elevation-chart-frame', className]} data-elevation-chart={trackId} set:html={svg} />

@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Grouped into one pull request, because this package's dev dependencies are
+  # a typechecker and a test runner: reviewing them one at a time costs more
+  # attention than it buys.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      all-dependencies:
+        patterns: ['*']
+
+  # The workflow pins actions by SHA, so this is what keeps them current. It
+  # rewrites the `# vN` comment alongside the pin.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

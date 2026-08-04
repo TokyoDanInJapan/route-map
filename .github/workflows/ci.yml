@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The workflow only builds and tests. It never needs write access.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # SHA-pinned, and the platform enforces it: a tag can be moved,
+      # a commit cannot. Dependabot bumps these and rewrites the comment.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      # --ignore-scripts, so the `prepare` build does not run before the
+      # typecheck has had a chance to say why it would fail.
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # What ships has to be importable. A wrong `exports` map is invisible in
+      # every step above and fatal in the first site that installs the package.
+      - name: The built package imports
+        run: |
+          node --input-type=module -e "
+          import { renderRouteMap } from './dist/server.js';
+          import { readFileSync } from 'node:fs';
+          const route = JSON.parse(readFileSync('tests/fixtures/route.json', 'utf8'));
+          const { overlay, legend } = renderRouteMap({ route });
+          if (!overlay.includes('<polyline')) throw new Error('no route drawn');
+          if (!legend.includes('<li ')) throw new Error('no legend written');
+          console.log('rendered', overlay.length, 'bytes of overlay');
+          "
+          node --input-type=module -e "
+          import { readFileSync } from 'node:fs';
+          if (!readFileSync('dist/styles.css', 'utf8').includes('.route-map-frame'))
+            throw new Error('the stylesheet did not ship');
+          console.log('stylesheet shipped');
+          "

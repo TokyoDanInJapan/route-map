@@ -1,0 +1,110 @@
+---
+/**
+ * The Astro half of a route map.
+ *
+ * Everything site-specific lives here rather than in the package: which content
+ * collection the gallery is in, how a thumbnail is built, and what a photograph
+ * with no caption should be called. The package draws the figure and works the
+ * cursor, and knows none of it.
+ *
+ * Usage in a post:
+ *
+ *   import MapImage from '~/assets/rides/my-ride/map.jpg';
+ *   import route from '~/assets/rides/my-ride/route.json';
+ *   import photos from '~/assets/rides/my-ride/photos.json';
+ *
+ *   <RouteMap src={MapImage} alt="Map" route={route} photos={photos}
+ *             trackId="my-ride" galleryid="cycling/day-trips/my-ride" />
+ *   <ElevationChart svg={ElevationSvg} trackId="my-ride" />
+ */
+import type { ImageMetadata } from 'astro';
+import { Image, getImage } from 'astro:assets';
+import { getEntry } from 'astro:content';
+import { renderRouteMap } from 'route-map/server';
+import type { PhotoPin, RouteData } from 'route-map/server';
+import 'route-map/styles.css';
+
+interface Props {
+  src: ImageMetadata;
+  alt: string;
+  route: RouteData;
+  /** photos.json - where each gallery photograph was taken along this route. */
+  photos?: { photos: { x?: number; y?: number; km: number; i: number }[]; totalKm: number };
+  /** The gallery those photographs belong to, so a click can open it there. */
+  galleryid?: string;
+  /** Ties this map to an <ElevationChart trackId="…"> so hovering syncs both. */
+  trackId?: string;
+  class?: string;
+}
+
+const { src, alt, route, photos, galleryid, trackId, class: className } = Astro.props;
+
+/**
+ * The dots, and the thumbnail each one shows.
+ *
+ * A photograph only appears if the tool could place it *and* the gallery still
+ * lists it - a manifest edited after `gpx-photo-points` last ran should lose the
+ * dot rather than point at a picture that is no longer there.
+ *
+ * Thumbnails are resolved at the width the gallery grid already builds at.
+ * Astro keys a transform by its arguments, so asking for the same width returns
+ * the same file rather than a second copy of every photograph on the site.
+ */
+const gallery = galleryid ? await getEntry('galleries', galleryid) : undefined;
+const images = gallery?.data.images ?? [];
+
+const pins: PhotoPin[] = await Promise.all(
+  (photos?.photos ?? [])
+    .filter((p) => p.x !== undefined && p.y !== undefined && images[p.i])
+    .map(async (p) => {
+      const entry = images[p.i];
+      const thumb = await getImage({ src: entry.src, width: 300 });
+      return {
+        x: p.x!,
+        y: p.y!,
+        km: p.km,
+        index: p.i,
+        thumb: thumb.src,
+        // Manifests here ship an empty alt, so fall back the way the gallery
+        // does - its own name plus a position, rather than one string repeated
+        // a hundred and fifty times.
+        alt: entry.alt?.trim() || `Photo ${p.i + 1} of ${images.length}`,
+      };
+    })
+);
+
+const { figureAttrs, overlay, preview, legend, data } = renderRouteMap({
+  route,
+  photos: pins,
+  trackId,
+  galleryid,
+});
+
+const { w, h } = route.map;
+
+// Take the package's class out of the spread and into the list. Left in both,
+// Astro keeps one and drops the other - and losing the site's own class here is
+// the kind of thing that shows up as the overlay sitting a few pixels off the
+// map rather than as an error.
+const { class: figureClass, ...figureRest } = figureAttrs;
+---
+
+<figure {...figureRest} class:list={[figureClass, 'not-prose', className]}>
+  <div class="route-map-frame">
+    <Image src={src} alt={alt} layout="responsive" width={w} height={h} />
+    <Fragment set:html={overlay} />
+    <Fragment set:html={preview} />
+  </div>
+  <Fragment set:html={legend} />
+  {/* Data, not code: an inert JSON block the cursor reads back out. */}
+  <script is:inline type="application/json" data-route-hover set:html={data} />
+</figure>
+
+<script>
+  import { attachRouteMaps } from 'route-map/client';
+
+  // `astro:page-load` fires on the first load and after every ClientRouter
+  // navigation. A plain module-body call would wire up the first page visited
+  // and nothing after it. Figures already wired are skipped.
+  document.addEventListener('astro:page-load', () => attachRouteMaps(document, { locale: 'en-NZ' }));
+</script>
