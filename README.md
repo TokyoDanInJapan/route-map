@@ -7,6 +7,9 @@ Move the pointer over the map and the profile marks the same spot. Move it over
 the profile and the map does. Photographs taken along the way sit on the route
 as dots, and show themselves when you point at one.
 
+**[See it running](https://tokyodaninjapan.github.io/route-map/)** - a 30 km
+ride, its profile, and the cursor they share.
+
 ## Why it is vector
 
 The tiles are a JPEG. Everything drawn on top of them is not, and three things
@@ -155,7 +158,15 @@ npm install
 npm test           # vitest, against happy-dom
 npm run typecheck
 npm run build      # tsc, plus the stylesheet
+
+npm --prefix demo install
+npm --prefix demo run dev    # the published demo, resolved from src/
 ```
+
+The demo under `demo/` is what GitHub Pages serves. It resolves the package
+through Vite aliases straight from `src/`, so a change to the package shows up
+in it without a build step, and the deployed site is the same page built with a
+`DEMO_BASE` for the subpath.
 
 The suite is 80 tests over four files: the cursor maths, the marker placement,
 the markup builder, and the client wired up over markup the builder produced.

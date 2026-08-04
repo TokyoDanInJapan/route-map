@@ -1,0 +1,58 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The build job only reads the repository. Writing to Pages is scoped to the
+# deploy job below, so a change to the demo cannot widen this workflow's reach.
+permissions:
+  contents: read
+
+# One deployment at a time, and never cancel one half way: a cancelled deploy
+# leaves the published site on the previous commit with no way to tell.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # Not called `build`: that is the context `require-pr-and-checks` requires of
+  # a pull request, and two check runs sharing a name is a rule that cannot say
+  # which one it meant.
+  build-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: demo/package-lock.json
+
+      # The demo resolves the package from ../src through Vite aliases, so it
+      # needs its own dependencies and nothing from the package's.
+      - name: Install demo
+        run: npm --prefix demo ci
+
+      - name: Build demo
+        env:
+          DEMO_BASE: /route-map
+        run: npm --prefix demo run build
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: demo/dist
+
+  deploy:
+    needs: build-demo
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

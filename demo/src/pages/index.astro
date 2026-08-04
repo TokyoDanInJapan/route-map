@@ -1,0 +1,163 @@
+---
+/**
+ * The demo: one route map, paired with its elevation profile.
+ *
+ * Deliberately minimal. It calls `renderRouteMap` with a route.json and lays
+ * the pieces out - no content collection, no image pipeline, no framework
+ * beyond Astro itself - so what you see is the package rather than a site
+ * built around it. The Astro components under `examples/astro/` are the fuller
+ * integration, with a gallery behind the photograph dots.
+ */
+import { Image } from 'astro:assets';
+import { renderRouteMap } from 'route-map/server';
+import type { RouteData } from 'route-map/server';
+import 'route-map/styles.css';
+
+import mapImage from '../assets/map.jpg';
+import routeData from '../assets/route.json';
+import elevationSvg from '../assets/elevation.svg?raw';
+
+const route = routeData as unknown as RouteData;
+const { figureAttrs, overlay, legend, data } = renderRouteMap({ route, trackId: 'demo' });
+const { class: figureClass, ...figureRest } = figureAttrs;
+const { w, h } = route.map;
+
+const totalKm = route.plot.kmMax.toFixed(1);
+const climb = Math.round(route.plot.yHi);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>route-map</title>
+    <meta
+      name="description"
+      content="A GPX route drawn over map tiles as SVG, with a cursor shared with its elevation profile."
+    />
+  </head>
+  <body>
+    <main>
+      <h1>route-map</h1>
+      <p class="lede">
+        A GPX route drawn over map tiles as SVG, with a cursor it shares with its elevation profile. Move the pointer
+        over either graphic and both mark the same spot. On a touch screen, drag.
+      </p>
+
+      <figure {...figureRest} class:list={[figureClass]}>
+        <div class="route-map-frame">
+          <Image src={mapImage} alt="Map of the route" width={w} height={h} format="jpeg" quality={72} />
+          <Fragment set:html={overlay} />
+        </div>
+        <Fragment set:html={legend} />
+        <script is:inline type="application/json" data-route-hover set:html={data} />
+      </figure>
+
+      <div class="elevation-chart-frame" data-elevation-chart="demo" set:html={elevationSvg} />
+
+      <p class="caption">
+        {totalKm} km along a river path, climbing to {climb} m. The route is coloured by gradient, using the same bands
+        as the profile below it. The four numbered markers are places the write-up linked to, and the legend is tied to
+        them both ways.
+      </p>
+
+      <section>
+        <h2>What is happening here</h2>
+        <ul>
+          <li>
+            <strong>The route is drawn on the server.</strong> Everything above except the moving cursor is in the HTML before
+            any script runs - turn JavaScript off and the map, the markers and the legend are still there.
+          </li>
+          <li>
+            <strong>The tiles are a JPEG; the route is not.</strong> That keeps it crisp on a dense screen, lets it be
+            coloured by gradient, and gives every point a distance along the ride for the two graphics to find each other
+            by.
+          </li>
+          <li>
+            <strong>The cursor snaps to a sample</strong>, every 100 m, so it stays on the drawn line rather than
+            floating beside it.
+          </li>
+        </ul>
+
+        <p>
+          Photograph dots are not shown here, because a demo has no photographs to show. Given a
+          <code>photos.json</code>, each one becomes a dot with a preview that keeps itself clear of the route.
+        </p>
+
+        <p class="links">
+          <a href="https://github.com/TokyoDanInJapan/route-map">Source and documentation</a>
+        </p>
+      </section>
+    </main>
+
+    <script>
+      import { attachRouteMaps } from 'route-map/client';
+
+      attachRouteMaps();
+    </script>
+
+    <style is:global>
+      :root {
+        --ink: #1f2328;
+        --muted: #57606a;
+        --page: #fff;
+        color-scheme: light dark;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e6edf3;
+          --muted: #9198a1;
+          --page: #0d1117;
+        }
+      }
+
+      body {
+        margin: 0;
+        padding: 2.5rem 1.25rem 4rem;
+        background: var(--page);
+        color: var(--ink);
+        font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
+
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 0.25rem;
+        font-size: 2rem;
+        letter-spacing: -0.02em;
+      }
+
+      h2 {
+        margin: 2.5rem 0 0.5rem;
+        font-size: 1.125rem;
+      }
+
+      .lede {
+        margin: 0 0 2rem;
+        color: var(--muted);
+      }
+
+      .caption,
+      .links {
+        color: var(--muted);
+        font-size: 0.9375rem;
+      }
+
+      .elevation-chart-frame {
+        margin-top: 1rem;
+      }
+
+      li {
+        margin-bottom: 0.5rem;
+      }
+
+      code {
+        font-size: 0.875em;
+      }
+    </style>
+  </body>
+</html>
