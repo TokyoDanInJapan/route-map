@@ -126,9 +126,9 @@ describe('the payload', () => {
 
   it('leaves a day ride\'s table alone', () => {
     // Thinning is to one sample per unit of the chart's x axis. This ride is
-    // 45 km across a 970-unit plot, so a unit is 46 m and the samples are 100 m
-    // apart - there is nothing to drop, and dropping any would cost the cursor
-    // resolution the chart can show.
+    // 63.5 km across a 970-unit plot, so a unit is 65 m and the samples are
+    // 113 m apart - there is nothing to drop, and dropping any would cost the
+    // cursor resolution the chart can show.
     const data = JSON.parse(renderRouteMap({ route }).data);
     expect(data.hover.length).toBe(route.hover.length);
   });
