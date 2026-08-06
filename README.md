@@ -7,7 +7,7 @@ Move the pointer over the map and the profile marks the same spot. Move it over
 the profile and the map does. Photographs taken along the way sit on the route
 as dots, and show themselves when you point at one.
 
-**[See it running](https://tokyodaninjapan.github.io/route-map/)** - a 30 km
+**[See it running](https://tokyodaninjapan.github.io/route-map/)** - a 63.5 km
 ride, its profile, and the cursor they share.
 
 ## Why it is vector
@@ -170,7 +170,7 @@ in it without a build step, and the deployed site is the same page built with a
 
 The suite is 80 tests over four files: the cursor maths, the marker placement,
 the markup builder, and the client wired up over markup the builder produced.
-The fixtures are a real `route.json` and `photos.json` from a 45 km ride, so
+The fixtures are a real `route.json` and `photos.json` from a 63.5 km ride, so
 what the tests read is a file the tool actually wrote.
 
 This package was extracted from a larger codebase, and the extraction was
