@@ -68,9 +68,9 @@
     "prepare": "npm run build"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
-    "happy-dom": "^20.11.2",
+    "@types/node": "^26.4.0",
+    "happy-dom": "^20.11.15",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
