@@ -17,7 +17,7 @@ preview - comes from the package.
 ## Installing
 
 ```bash
-npm install github:TokyoDanInJapan/route-map#v1.0.0
+npm install github:TokyoDanInJapan/route-map#v1.0.1
 ```
 
 Then copy `RouteMap.astro` and `ElevationChart.astro` into your components

@@ -28,7 +28,7 @@ the cursor and the photo preview need a script.
 ## Install
 
 ```bash
-npm install github:TokyoDanInJapan/route-map#v1.0.0
+npm install github:TokyoDanInJapan/route-map#v1.0.1
 ```
 
 Pin the tag. This package reads JSON that

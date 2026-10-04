@@ -1,6 +1,6 @@
 {
   "name": "route-map",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A GPX route drawn over map tiles as SVG, with a cursor shared with its elevation profile",
   "keywords": [
     "gpx",
