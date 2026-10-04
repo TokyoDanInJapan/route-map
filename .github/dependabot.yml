@@ -2,13 +2,34 @@ version: 2
 updates:
   # Grouped into one pull request, because this package's dev dependencies are
   # a typechecker and a test runner: reviewing them one at a time costs more
-  # attention than it buys.
+  # attention than it buys. Security fixes get a group of their own, so they
+  # arrive together rather than as pull requests that conflict in the lockfile.
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
     groups:
       all-dependencies:
+        applies-to: version-updates
+        patterns: ['*']
+      security:
+        applies-to: security-updates
+        patterns: ['*']
+
+  # The demo's lockfile is almost all Astro and what Astro pulls in. Without an
+  # entry here it only ever received security fixes, one pull request per
+  # package, and four of those editing the same lockfile at once is four
+  # rebases.
+  - package-ecosystem: npm
+    directory: /demo
+    schedule:
+      interval: weekly
+    groups:
+      all-dependencies:
+        applies-to: version-updates
+        patterns: ['*']
+      security:
+        applies-to: security-updates
         patterns: ['*']
 
   # The workflow pins actions by SHA, so this is what keeps them current. It
