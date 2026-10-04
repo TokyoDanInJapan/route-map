@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { POI_STYLES, renderRouteMap } from '../src/render.js';
+import { PHOTO_FILL, POI_STYLES, renderRouteMap } from '../src/render.js';
 import type { PhotoPin, RouteData } from '../src/types.js';
 
 const route = JSON.parse(readFileSync(path.join(__dirname, 'fixtures/route.json'), 'utf8')) as RouteData;
@@ -93,6 +93,11 @@ describe('the photographs', () => {
   it('emits the preview markup only when there is something to preview', () => {
     expect(renderRouteMap({ route }).preview).toBe('');
     expect(renderRouteMap({ route, photos }).preview).toContain('data-photo-preview');
+  });
+
+  it('colours the preview’s leader line like the dot it points at', () => {
+    // The stylesheet no longer carries its own copy of the colour.
+    expect(renderRouteMap({ route, photos }).preview).toContain(`<line x1="0" y1="0" x2="0" y2="0" stroke="${PHOTO_FILL}" />`);
   });
 });
 

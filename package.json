@@ -51,7 +51,6 @@
   "files": [
     "dist",
     "src",
-    "!src/**/*.test.ts",
     "examples",
     "README.md",
     "LICENSE"
@@ -68,9 +67,9 @@
     "prepare": "npm run build"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
-    "happy-dom": "^20.11.2",
+    "@types/node": "^26.6.4",
+    "happy-dom": "^20.14.5",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

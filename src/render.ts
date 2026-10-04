@@ -13,7 +13,7 @@
 
 import { thinHover } from './hover.js';
 import { GROUP_PX, PHOTO_COLLIDE_PX, PHOTO_NUDGE, groupPhotos, placeMarkers } from './markers.js';
-import type { PhotoPin, PoiCategory, RouteData } from './types.js';
+import type { HoverPayload, PhotoPin, PoiCategory, Point, RouteData } from './types.js';
 
 /**
  * Marker colours, matching POI_STYLES in gpx-tools' maps/mapgen.py.
@@ -87,6 +87,14 @@ const attrs = (pairs: Record<string, string | number | undefined>) =>
     .map(([key, value]) => ` ${key}="${escapeAttr(String(value))}"`)
     .join('');
 
+/**
+ * A line from where a place really is to where its marker was moved. Drawn
+ * twice, white under the colour, so it reads over the tiles and the route alike.
+ */
+const leaderLine = (from: Point, x: number, y: number, colour: string, width: number, casing: number) =>
+  `<line x1="${from.x}" y1="${from.y}" x2="${x}" y2="${y}" stroke="#fff" stroke-width="${casing}" />` +
+  `<line x1="${from.x}" y1="${from.y}" x2="${x}" y2="${y}" stroke="${colour}" stroke-width="${width}" />`;
+
 export function renderRouteMap(options: RenderOptions): RouteMapMarkup {
   const { route, photos = [], trackId, galleryid } = options;
   const { w, h } = route.map;
@@ -127,10 +135,7 @@ export function renderRouteMap(options: RenderOptions): RouteMapMarkup {
     .map(({ item, mx, my, leader }) => {
       const first = item.members[0];
       const count = item.members.length;
-      const line = leader
-        ? `<line x1="${item.x}" y1="${item.y}" x2="${mx}" y2="${my}" stroke="#fff" stroke-width="2.5" />` +
-          `<line x1="${item.x}" y1="${item.y}" x2="${mx}" y2="${my}" stroke="${PHOTO_FILL}" stroke-width="1.2" />`
-        : '';
+      const line = leader ? leaderLine(item, mx, my, PHOTO_FILL, 1.2, 2.5) : '';
       const label = count > 1 ? `${count} photos here` : first.alt;
       const badge =
         count > 1
@@ -165,8 +170,7 @@ export function renderRouteMap(options: RenderOptions): RouteMapMarkup {
       const fill = POI_STYLES[item.category].fill;
       return (
         '<g class="route-poi-leader">' +
-        `<line x1="${item.x}" y1="${item.y}" x2="${mx}" y2="${my}" stroke="#fff" stroke-width="4" />` +
-        `<line x1="${item.x}" y1="${item.y}" x2="${mx}" y2="${my}" stroke="${fill}" stroke-width="2" />` +
+        leaderLine(item, mx, my, fill, 2, 4) +
         `<circle cx="${item.x}" cy="${item.y}" r="3.5" fill="${fill}" stroke="#fff" stroke-width="1.5" />` +
         '</g>'
       );
@@ -238,7 +242,9 @@ export function renderRouteMap(options: RenderOptions): RouteMapMarkup {
   // what it wants is a fixed readable size either way.
   const preview = photoDots.length
     ? '<svg class="route-photo-link" data-photo-link aria-hidden="true" focusable="false">' +
-      '<line x1="0" y1="0" x2="0" y2="0" /></svg>' +
+      // Coloured here rather than in the stylesheet, so PHOTO_FILL is the only
+      // place the photo colour is written down.
+      `<line x1="0" y1="0" x2="0" y2="0" stroke="${PHOTO_FILL}" /></svg>` +
       '<div class="route-photo-preview" data-photo-preview hidden aria-hidden="true">' +
       '<img alt="" decoding="async" />' +
       // Shown while the thumbnail is still on its way, in a frame held open at
@@ -267,12 +273,12 @@ export function renderRouteMap(options: RenderOptions): RouteMapMarkup {
       '</ul>'
     : '';
 
-  // Only what the cursor needs. The drawn geometry is already in the markup.
-  const data = JSON.stringify({
+  const payload: HoverPayload = {
     map: { w, h },
     plot: route.plot,
     hover: thinHover(route.hover, route.plot),
-  });
+  };
+  const data = JSON.stringify(payload);
 
   return {
     figureAttrs: {

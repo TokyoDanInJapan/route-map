@@ -61,8 +61,27 @@ function addChart(trackId: string) {
   return chart;
 }
 
+/**
+ * Animation frames the client has asked for. Pointer handling waits for the
+ * next frame, as a browser would run it before repainting, so a test moves the
+ * pointer, calls `paint`, and then looks.
+ */
+let frames = new Map<number, FrameRequestCallback>();
+let lastFrame = 0;
+const paint = () => {
+  const due = frames;
+  frames = new Map();
+  due.forEach((callback) => callback(performance.now()));
+};
+
 beforeEach(() => {
   document.body.innerHTML = '';
+  frames = new Map();
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(++lastFrame, callback);
+    return lastFrame;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
 });
 
 describe('the map cursor', () => {
@@ -75,6 +94,7 @@ describe('the map cursor', () => {
 
     const [, , x, y] = route.hover[100];
     frame.dispatchEvent(pointer('pointermove', x, y));
+    paint();
     expect(cursor.getAttribute('visibility')).toBe('visible');
     expect(cursor.getAttribute('transform')).toBe(`translate(${x} ${y})`);
   });
@@ -87,6 +107,7 @@ describe('the map cursor', () => {
     attachRouteMap(figure);
     const [, , x, y] = route.hover[200];
     frame.dispatchEvent(pointer('pointermove', x + 8, y + 8));
+    paint();
 
     const landed = figure.querySelector('.route-cursor')!.getAttribute('transform');
     const samples = new Set(route.hover.map(([, , sx, sy]) => `translate(${sx} ${sy})`));
@@ -99,6 +120,7 @@ describe('the map cursor', () => {
     attachRouteMap(figure);
     const [, , x, y] = route.hover[10];
     frame.dispatchEvent(pointer('pointerdown', x, y, 'touch'));
+    paint();
     expect(figure.querySelector('.route-cursor')!.getAttribute('visibility')).toBe('visible');
   });
 
@@ -106,6 +128,7 @@ describe('the map cursor', () => {
     const { figure, frame } = build();
     attachRouteMap(figure);
     frame.dispatchEvent(pointer('pointermove', 300, 300));
+    paint();
     frame.dispatchEvent(pointer('pointerleave', 300, 300));
     expect(figure.querySelector('.route-cursor')!.getAttribute('visibility')).toBe('hidden');
   });
@@ -116,8 +139,35 @@ describe('the map cursor', () => {
     const { figure, frame } = build();
     attachRouteMap(figure);
     frame.dispatchEvent(pointer('pointermove', 300, 300, 'touch'));
+    paint();
     frame.dispatchEvent(pointer('pointerleave', 300, 300, 'touch'));
+    paint();
     expect(figure.querySelector('.route-cursor')!.getAttribute('visibility')).toBe('visible');
+  });
+
+  it('handles a burst of moves once, at the last position', () => {
+    // A pointer can report several times between repaints, and only the
+    // position the next frame shows is worth measuring the layout for.
+    const { figure, frame } = build();
+    attachRouteMap(figure);
+    const measure = vi.spyOn(frame, 'getBoundingClientRect');
+    for (const i of [10, 20, 30]) frame.dispatchEvent(pointer('pointermove', route.hover[i][2], route.hover[i][3]));
+    expect(measure).not.toHaveBeenCalled();
+
+    paint();
+    const [, , x, y] = route.hover[30];
+    expect(figure.querySelector('.route-cursor')!.getAttribute('transform')).toBe(`translate(${x} ${y})`);
+    // Once for the cursor and once for the photo preview, rather than per move.
+    expect(measure.mock.calls.length).toBeLessThanOrEqual(2);
+  });
+
+  it('is not brought back by a move that arrived just before the mouse left', () => {
+    const { figure, frame } = build();
+    attachRouteMap(figure);
+    frame.dispatchEvent(pointer('pointermove', 300, 300));
+    frame.dispatchEvent(pointer('pointerleave', 300, 300));
+    paint();
+    expect(figure.querySelector('.route-cursor')!.getAttribute('visibility')).toBe('hidden');
   });
 });
 
@@ -128,6 +178,7 @@ describe('the chart it is paired with', () => {
     attachRouteMap(figure);
 
     frame.dispatchEvent(pointer('pointermove', ...([route.hover[100][2], route.hover[100][3]] as [number, number])));
+    paint();
     expect(chart.querySelector('.route-cursor')!.getAttribute('visibility')).toBe('visible');
     const readout = chart.querySelector<HTMLElement>('.route-readout')!;
     expect(readout.hidden).toBe(false);
@@ -141,6 +192,7 @@ describe('the chart it is paired with', () => {
 
     // Halfway along the plot area is halfway along the ride.
     chart.dispatchEvent(pointer('pointermove', 512, 100));
+    paint();
     const readout = chart.querySelector<HTMLElement>('.route-readout')!;
     const km = Number(readout.textContent!.split(' ')[0]);
     expect(km).toBeGreaterThan(route.plot.kmMax * 0.4);
@@ -153,6 +205,7 @@ describe('the chart it is paired with', () => {
     const chart = addChart('arakawa');
     attachRouteMap(figure, { formatReadout: (p) => `${p.km.toFixed(2)}km` });
     frame.dispatchEvent(pointer('pointermove', route.hover[50][2], route.hover[50][3]));
+    paint();
     expect(chart.querySelector('.route-readout')!.textContent).toMatch(/^\d+\.\d\dkm$/);
   });
 
@@ -160,6 +213,7 @@ describe('the chart it is paired with', () => {
     const { figure, frame } = build({ route, trackId: 'nothing-matches-this' });
     attachRouteMap(figure);
     frame.dispatchEvent(pointer('pointermove', 300, 300));
+    paint();
     expect(figure.querySelector('.route-cursor')!.getAttribute('visibility')).toBe('visible');
   });
 });
@@ -200,6 +254,7 @@ describe('the photo preview', () => {
     expect(preview.hidden).toBe(true);
 
     frame.dispatchEvent(pointer('pointermove', Number(hit.getAttribute('cx')), Number(hit.getAttribute('cy'))));
+    paint();
     expect(preview.hidden).toBe(false);
     expect(preview.querySelector('img')!.getAttribute('src')).toBe(dot.dataset.thumb);
     expect(dot.classList.contains('is-active')).toBe(true);
@@ -216,6 +271,7 @@ describe('the photo preview', () => {
     hit.getBoundingClientRect = () => ({ left: 10, top: 10, width: 13, height: 13 }) as DOMRect;
 
     frame.dispatchEvent(pointer('pointermove', Number(hit.getAttribute('cx')), Number(hit.getAttribute('cy'))));
+    paint();
     const preview = figure.querySelector<HTMLElement>('[data-photo-preview]')!;
     expect(preview.hasAttribute('data-loading')).toBe(true);
   });
@@ -228,7 +284,9 @@ describe('the photo preview', () => {
     hit.getBoundingClientRect = () => ({ left: 10, top: 10, width: 13, height: 13 }) as DOMRect;
 
     frame.dispatchEvent(pointer('pointermove', Number(hit.getAttribute('cx')), Number(hit.getAttribute('cy'))));
+    paint();
     frame.dispatchEvent(pointer('pointermove', 5, 700));
+    paint();
     expect(figure.querySelector<HTMLElement>('[data-photo-preview]')!.hidden).toBe(true);
     expect(dot.classList.contains('is-active')).toBe(false);
   });
