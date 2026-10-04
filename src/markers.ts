@@ -83,6 +83,12 @@ export function placeMarkers<T extends Point>(
 
   const placed: Placed<T>[] = items.map((item) => ({ item, mx: item.x, my: item.y, leader: false }));
 
+  // Keep a marker on the image, `edge` clear of every side alike.
+  const moveTo = (m: Placed<T>, x: number, y: number) => {
+    m.mx = Math.min(width - edge, Math.max(edge, x));
+    m.my = Math.min(height - edge, Math.max(edge, y));
+  };
+
   for (let g = 0; g < groups; g++) {
     const members = placed.filter((_, i) => cluster[i] === g);
     if (members.length < 2) continue;
@@ -94,9 +100,7 @@ export function placeMarkers<T extends Point>(
 
     members.forEach((m, i) => {
       const angle = -Math.PI / 2 + (i * 2 * Math.PI) / members.length;
-      // Keep the marker on the image even when the cluster sits near an edge.
-      m.mx = Math.min(width - edge, Math.max(edge, cx + radius * Math.cos(angle)));
-      m.my = Math.min(height - 15, Math.max(edge, cy + radius * Math.sin(angle)));
+      moveTo(m, cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
     });
   }
 
@@ -122,10 +126,8 @@ export function placeMarkers<T extends Point>(
         const push = (collide - gap) / 2 + 0.5;
         const ux = (dx / gap) * push;
         const uy = (dy / gap) * push;
-        placed[i].mx = Math.min(width - edge, Math.max(edge, placed[i].mx - ux));
-        placed[i].my = Math.min(height - 15, Math.max(edge, placed[i].my - uy));
-        placed[j].mx = Math.min(width - edge, Math.max(edge, placed[j].mx + ux));
-        placed[j].my = Math.min(height - 15, Math.max(edge, placed[j].my + uy));
+        moveTo(placed[i], placed[i].mx - ux, placed[i].my - uy);
+        moveTo(placed[j], placed[j].mx + ux, placed[j].my + uy);
       }
     }
     if (settled) break;

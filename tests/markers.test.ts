@@ -67,6 +67,22 @@ describe('placeMarkers', () => {
     }
   });
 
+  it('holds markers the same distance clear of every edge', () => {
+    // The bottom edge once had its own hard-coded margin, so photo dots near it
+    // stood further in than at the top, and a pair fanned straight down could
+    // be clamped back on top of each other.
+    const at = (x: number, y: number) => [
+      { x, y },
+      { x, y },
+    ];
+    const edge = 6;
+    const top = placeMarkers(at(500, 2), W, H, 13, 9, edge);
+    const bottom = placeMarkers(at(500, H - 2), W, H, 13, 9, edge);
+    expect(Math.min(...top.map((m) => m.my))).toBeCloseTo(edge);
+    expect(Math.max(...bottom.map((m) => m.my))).toBeCloseTo(H - edge);
+    expect(gap(bottom[0], bottom[1])).toBeGreaterThanOrEqual(13 - 0.01);
+  });
+
   it('draws a leader only for a marker that has really moved', () => {
     const [alone] = placeMarkers([{ x: 400, y: 300 }], W, H);
     expect(alone.leader).toBe(false);
