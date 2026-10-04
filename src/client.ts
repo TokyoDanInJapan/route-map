@@ -44,6 +44,39 @@ const defaultPhotoOpen = ({ galleryid, index }: { galleryid: string | undefined;
 };
 
 /**
+ * Handle a pointer at most once a frame, at its latest position.
+ *
+ * A pointer can report several times between two repaints - 120 Hz and up on a
+ * recent phone or mouse - and every handler here measures layout it has just
+ * changed, which makes the browser lay the page out again on the spot. Only the
+ * position the next frame will show is worth that work.
+ *
+ * `cancel` drops a position not yet handled, so leaving is not undone a frame
+ * later by a move that arrived just before it.
+ */
+function perFrame(handle: (event: PointerEvent) => void) {
+  let latest: PointerEvent | null = null;
+  let request = 0;
+  return {
+    push(event: PointerEvent) {
+      latest = event;
+      if (request) return;
+      request = requestAnimationFrame(() => {
+        request = 0;
+        const event = latest!;
+        latest = null;
+        handle(event);
+      });
+    },
+    cancel() {
+      if (request) cancelAnimationFrame(request);
+      request = 0;
+      latest = null;
+    },
+  };
+}
+
+/**
  * Wire up one route map.
  *
  * Safe to call twice on the same element: a router that restores a cached page
@@ -194,36 +227,42 @@ export function attachRouteMap(figure: HTMLElement, options: AttachOptions = {})
    * where it was put, until the next touch moves it.
    */
   const hideUnlessTouch = (event: PointerEvent) => {
-    if (event.pointerType !== 'touch') hide();
+    if (event.pointerType === 'touch') return;
+    mapMoves.cancel();
+    chartMoves?.cancel();
+    hide();
   };
 
   // The map: find the nearest point of the route to the pointer. pointerdown as
   // well as pointermove, so a tap places the mark - on touch there is no move to
   // precede it.
-  const trackMap = (event: PointerEvent) => {
+  const mapMoves = perFrame((event) => {
     const rect = frame.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const x = ((event.clientX - rect.left) / rect.width) * data.map.w;
     const y = ((event.clientY - rect.top) / rect.height) * data.map.h;
     const point = nearestPoint(data.hover, x, y);
     if (point) show(point);
-  };
-  frame.addEventListener('pointermove', trackMap);
-  frame.addEventListener('pointerdown', trackMap);
+  });
+  frame.addEventListener('pointermove', mapMoves.push);
+  frame.addEventListener('pointerdown', mapMoves.push);
   frame.addEventListener('pointerleave', hideUnlessTouch);
   frame.addEventListener('pointercancel', hideUnlessTouch);
 
   // The chart: read a distance off its x axis.
-  if (chart && chartSvg) {
-    const trackChart = (event: PointerEvent) => {
-      const rect = chartSvg.getBoundingClientRect();
-      if (!rect.width) return;
-      const x = ((event.clientX - rect.left) / rect.width) * data.plot.w;
-      const point = pointAtKm(data.hover, kmAtChartX(x, data.plot));
-      if (point) show(point);
-    };
-    chart.addEventListener('pointermove', trackChart);
-    chart.addEventListener('pointerdown', trackChart);
+  const chartMoves =
+    chart && chartSvg
+      ? perFrame((event) => {
+          const rect = chartSvg.getBoundingClientRect();
+          if (!rect.width) return;
+          const x = ((event.clientX - rect.left) / rect.width) * data.plot.w;
+          const point = pointAtKm(data.hover, kmAtChartX(x, data.plot));
+          if (point) show(point);
+        })
+      : null;
+  if (chart && chartMoves) {
+    chart.addEventListener('pointermove', chartMoves.push);
+    chart.addEventListener('pointerdown', chartMoves.push);
     chart.addEventListener('pointerleave', hideUnlessTouch);
     chart.addEventListener('pointercancel', hideUnlessTouch);
   }
@@ -456,7 +495,7 @@ function setUpPhotoPreview(
     return { dot, cx: Number(hit?.getAttribute('cx')), cy: Number(hit?.getAttribute('cy')) };
   }).filter((c) => Number.isFinite(c.cx) && Number.isFinite(c.cy));
 
-  frame.addEventListener('pointermove', (event) => {
+  const moves = perFrame((event) => {
     // Over the picture itself, which is a target of its own: leaving it up is
     // what lets the reader move onto it and click.
     if (active && preview.contains(event.target as Node)) return;
@@ -479,6 +518,7 @@ function setUpPhotoPreview(
     if (!nearest) hide();
     else if (nearest !== active) show(nearest);
   });
+  frame.addEventListener('pointermove', moves.push);
 
   dots.forEach((dot) => {
     dot.addEventListener('click', () => {
@@ -493,8 +533,12 @@ function setUpPhotoPreview(
     if (active) openGallery(active);
   });
 
-  frame.addEventListener('pointerleave', hide);
-  frame.addEventListener('pointercancel', hide);
+  const leave = () => {
+    moves.cancel();
+    hide();
+  };
+  frame.addEventListener('pointerleave', leave);
+  frame.addEventListener('pointercancel', leave);
 }
 
 /**
