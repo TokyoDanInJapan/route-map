@@ -8,13 +8,7 @@
  */
 
 import { chartXOfKm, chartYOfEle, kmAtChartX, nearestPoint, pointAtKm } from './hover.js';
-import type { HoverRow, PlotGeometry, TrackPoint } from './types.js';
-
-interface HoverData {
-  map: { w: number; h: number };
-  plot: PlotGeometry;
-  hover: HoverRow[];
-}
+import type { HoverPayload, TrackPoint } from './types.js';
 
 export interface AttachOptions {
   /**
@@ -65,9 +59,9 @@ export function attachRouteMap(figure: HTMLElement, options: AttachOptions = {})
   const overlay = figure.querySelector<SVGSVGElement>('.route-map-overlay');
   if (!dataEl?.textContent || !frame || !overlay) return;
 
-  let data: HoverData;
+  let data: HoverPayload;
   try {
-    data = JSON.parse(dataEl.textContent) as HoverData;
+    data = JSON.parse(dataEl.textContent) as HoverPayload;
   } catch {
     return; // A broken payload should cost the reader the hover, nothing more.
   }
@@ -251,7 +245,7 @@ export function attachRouteMap(figure: HTMLElement, options: AttachOptions = {})
 function setUpPhotoPreview(
   figure: HTMLElement,
   frame: HTMLElement,
-  data: HoverData,
+  data: HoverPayload,
   options: AttachOptions
 ): void {
   const preview = figure.querySelector<HTMLElement>('[data-photo-preview]');

@@ -101,6 +101,16 @@ export interface PhotoPin {
   alt: string;
 }
 
+/**
+ * The inert JSON `renderRouteMap` leaves in the figure for `attachRouteMap` to
+ * read back. Only what the cursor needs: the drawn geometry is in the markup.
+ */
+export interface HoverPayload {
+  map: { w: number; h: number };
+  plot: PlotGeometry;
+  hover: HoverRow[];
+}
+
 /** Anything `placeMarkers` can move: a marker is a point until it is drawn. */
 export interface Point {
   x: number;

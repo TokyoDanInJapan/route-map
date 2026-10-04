@@ -13,7 +13,7 @@
 
 import { thinHover } from './hover.js';
 import { GROUP_PX, PHOTO_COLLIDE_PX, PHOTO_NUDGE, groupPhotos, placeMarkers } from './markers.js';
-import type { PhotoPin, PoiCategory, RouteData } from './types.js';
+import type { HoverPayload, PhotoPin, PoiCategory, RouteData } from './types.js';
 
 /**
  * Marker colours, matching POI_STYLES in gpx-tools' maps/mapgen.py.
@@ -267,12 +267,12 @@ export function renderRouteMap(options: RenderOptions): RouteMapMarkup {
       '</ul>'
     : '';
 
-  // Only what the cursor needs. The drawn geometry is already in the markup.
-  const data = JSON.stringify({
+  const payload: HoverPayload = {
     map: { w, h },
     plot: route.plot,
     hover: thinHover(route.hover, route.plot),
-  });
+  };
+  const data = JSON.stringify(payload);
 
   return {
     figureAttrs: {
