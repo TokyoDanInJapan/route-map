@@ -163,16 +163,23 @@ export interface Group<T> extends Point {
  */
 export function groupPhotos<T extends Point & { km: number }>(pins: readonly T[], within = GROUP_PX): Group<T>[] {
   const groups: Group<T>[] = [];
+  // Running totals per group, so a rest stop's dozen photographs are not each
+  // re-added every time another one joins.
+  const sums: { x: number; y: number }[] = [];
   for (const pin of pins) {
-    const near = groups.find((g) => Math.hypot(g.x - pin.x, g.y - pin.y) <= within);
-    if (near) {
+    const at = groups.findIndex((g) => Math.hypot(g.x - pin.x, g.y - pin.y) <= within);
+    if (at >= 0) {
+      const near = groups[at];
       near.members.push(pin);
+      sums[at].x += pin.x;
+      sums[at].y += pin.y;
       // Keep the dot on the group's centre of mass rather than on whichever
       // photograph happened to arrive first.
-      near.x = near.members.reduce((sum, m) => sum + m.x, 0) / near.members.length;
-      near.y = near.members.reduce((sum, m) => sum + m.y, 0) / near.members.length;
+      near.x = sums[at].x / near.members.length;
+      near.y = sums[at].y / near.members.length;
     } else {
       groups.push({ x: pin.x, y: pin.y, km: pin.km, members: [pin] });
+      sums.push({ x: pin.x, y: pin.y });
     }
   }
   return groups;
